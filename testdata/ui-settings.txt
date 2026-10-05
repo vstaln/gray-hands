@@ -1,0 +1,48 @@
+**Current Phone State:**
+• **App:** Settings (com.android.settings)
+• **Keyboard:** Hidden
+• **Focused Element:** ''
+
+Current Clickable UI elements:
+'index. className: resourceId; checkedState, text - bounds(x1,y1,x2,y2)':
+1. FrameLayout: "android.widget.FrameLayout" - (0,0,1080,2412)
+2. ViewGroup: "com.android.settings:id/settings_homepage_container", "com.android.settings:id/settings_homepage_container" - (0,0,1080,2412)
+3. FrameLayout: "android:id/list_container", "android:id/list_container" - (0,240,1080,2412)
+4. RecyclerView: "com.android.settings:id/recycler_view", "com.android.settings:id/recycler_view" - (0,240,1080,2412)
+5. LinearLayout: "android.widget.LinearLayout" - (0,551,1080,729)
+6. TextView: "android:id/title", "Sign in" - (251,588,373,644)
+7. TextView: "android:id/summary", "Manage account info and security." - (251,649,717,691)
+8. LinearLayout: "android.widget.LinearLayout" - (0,729,1080,769)
+9. LinearLayout: "android.widget.LinearLayout" - (0,769,1080,908)
+10. TextView: "android:id/title", "Airplane mode" - (205,813,860,869)
+11. Switch: "android:id/switch_widget", "Off" ; isChecked=False - (901,810,998,871)
+12. LinearLayout: "android.widget.LinearLayout" - (0,908,1080,1041)
+13. TextView: "android:id/title", "Wi-Fi" - (205,920,305,1028)
+14. TextView: "com.android.settings:id/coui_statusText1", "Belajarsalon" - (346,924,957,1025)
+15. LinearLayout: "android.widget.LinearLayout" - (0,1041,1080,1174)
+16. TextView: "android:id/title", "Bluetooth" - (205,1053,384,1161)
+17. TextView: "com.android.settings:id/coui_statusText1", "Connected" - (425,1057,957,1158)
+18. LinearLayout: "android.widget.LinearLayout" - (0,1174,1080,1307)
+19. TextView: "android:id/title", "Mobile network" - (205,1186,926,1294)
+20. LinearLayout: "android.widget.LinearLayout" - (0,1307,1080,1445)
+21. TextView: "android:id/title", "Connection & sharing" - (205,1319,926,1427)
+22. LinearLayout: "android.widget.LinearLayout" - (0,1486,1080,1624)
+23. TextView: "android:id/title", "Wallpapers & style" - (205,1503,901,1611)
+24. TextView: "com.android.settings:id/coui_statusText1", "com.android.settings:id/coui_statusText1" - (942,1550,957,1565)
+25. LinearLayout: "android.widget.LinearLayout" - (0,1624,1080,1757)
+26. TextView: "android:id/title", "Home screen & Lock screen" - (205,1636,926,1744)
+27. LinearLayout: "android.widget.LinearLayout" - (0,1757,1080,1895)
+28. TextView: "android:id/title", "Display & brightness" - (205,1769,926,1877)
+29. LinearLayout: "android.widget.LinearLayout" - (0,1936,1080,2074)
+30. TextView: "android:id/title", "Sounds & vibration" - (205,1953,926,2061)
+31. LinearLayout: "android.widget.LinearLayout" - (0,2074,1080,2212)
+32. TextView: "android:id/title", "Notifications & Quick Settings" - (205,2086,926,2194)
+33. LinearLayout: "android.widget.LinearLayout" - (0,2253,1080,2380)
+34. TextView: "android:id/title", "Security & privacy" - (205,2265,926,2373)
+35. LinearLayout: "android.widget.LinearLayout" - (0,2380,1080,2412)
+36. TextView: "android:id/title", "Safety & emergency" - (205,2392,926,2412)
+37. LinearLayout: "com.android.settings:id/app_bar_layout", "com.android.settings:id/app_bar_layout" - (0,107,1080,520)
+38. TextView: "com.android.settings:id/toolbar_title", "Settings" - (0,240,1080,387)
+39. ViewGroup: "com.android.settings:id/searchView", "Search box" - (0,387,1080,520)
+
+Phone state: {'currentApp': 'Settings', 'packageName': 'com.android.settings', 'activityName': 'com.oplus.settings.feature.homepage.OplusSettingsHomepageActivity', 'keyboardVisible': False, 'isEditable': False, 'focusedElement': {'className': 'android.widget.FrameLayout', 'resourceId': 'android:id/list_container'}}
