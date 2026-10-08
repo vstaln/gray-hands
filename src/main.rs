@@ -2,7 +2,7 @@
 //! Protocol v1.1. Tools: device_status, device_ui, device_tap, device_tap_element,
 //! device_type, device_swipe, device_press, device_launch, device_apps,
 //! device_screenshot, device_run (autonomous Jev action-selection loop).
-//! Command: /device <subcommand>.
+//! Command: /hands <subcommand>.
 
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
