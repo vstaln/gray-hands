@@ -13,6 +13,7 @@ use serde_json::{Value, json};
 
 #[derive(serde::Deserialize)]
 struct Request {
+    #[serde(default)]
     id: Value,
     method: String,
     #[serde(default)]
@@ -442,6 +443,10 @@ fn manifest() -> Value {
 
 #[tokio::main(flavor = "multi_thread")]
 async fn main() -> anyhow::Result<()> {
+    if std::env::args().nth(1).as_deref() == Some("manifest") {
+        println!("{}", manifest());
+        return Ok(());
+    }
     let mut lines = tokio::io::AsyncBufReadExt::lines(tokio::io::BufReader::new(tokio::io::stdin()));
     let http = reqwest::Client::builder()
         .user_agent("gray-hands/0.1")
@@ -452,6 +457,7 @@ async fn main() -> anyhow::Result<()> {
         if line.trim().is_empty() { continue; }
         let request: Request = match serde_json::from_str(&line) { Ok(r) => r, Err(_) => continue };
         if request.method == "plugin/shutdown" { break; }
+        if request.id.is_null() { continue; }
         let params = request.params.clone().unwrap_or_else(|| json!({}));
         let reply: anyhow::Result<Value> = match request.method.as_str() {
             "plugin/manifest" => Ok(manifest()),
