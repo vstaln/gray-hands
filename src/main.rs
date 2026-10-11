@@ -342,7 +342,24 @@ fn str_arg<'a>(args: &'a Value, k: &str) -> Option<&'a str> { args.get(k).and_th
 fn ok(content: String) -> Value { json!({"content": content.chars().take(8000).collect::<String>()}) }
 fn err(e: impl std::fmt::Display) -> Value { json!({"content": format!("error: {e}"), "is_error": true}) }
 
+fn device_gate() -> Result<(), String> {
+    let out = std::process::Command::new("adb")
+        .arg("devices")
+        .output()
+        .map_err(|e| format!("no device connected (adb devices failed: {e})"))?;
+    let listed = String::from_utf8_lossy(&out.stdout)
+        .lines()
+        .skip(1)
+        .any(|l| !l.trim().is_empty());
+    if listed { Ok(()) } else { Err("no device connected (adb devices is empty)".into()) }
+}
+
 async fn handle_tool(http: &reqwest::Client, name: &str, args: &Value) -> Value {
+    if name.starts_with("device_")
+        && let Err(e) = device_gate()
+    {
+        return err(e);
+    }
     match name {
         "device_ui" => match ui_dump() {
             Ok((app, els)) => ok(format!("app: {app}\n{}", els.iter().map(|e| format!("{}. {} \"{}\" ({},{})", e.i, e.cls, e.label, e.cx(), e.cy())).collect::<Vec<_>>().join("\n"))),
