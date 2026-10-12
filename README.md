@@ -4,9 +4,10 @@
 <h1 align="center">gray-hands</h1>
 <p align="center">Drive an Android phone from a gray session — UI-tree tools plus an autonomous Jev task loop.</p>
 <p align="center">
-  <a href="https://github.com/vstaln/gray-hands/blob/main/LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-blue.svg"></a>
-  <img alt="gray plugin" src="https://img.shields.io/badge/gray-plugin-7aa2f7.svg">
-  <img alt="rust" src="https://img.shields.io/badge/built%20with-rust-orange.svg">
+  <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-blue.svg"></a>
+  <a href="https://gray.alignment.id"><img alt="gray plugin" src="https://img.shields.io/badge/gray-plugin-7aa2f7.svg"></a>
+  <a href="https://www.rust-lang.org"><img alt="built with Rust" src="https://img.shields.io/badge/built%20with-rust-orange.svg"></a>
+  <a href="https://github.com/vstaln/gray-hands/releases"><img alt="latest release" src="https://img.shields.io/github/v/release/vstaln/gray-hands"></a>
 </p>
 
 Drive a connected Android device from a [gray](https://github.com/vstaln/gray) session. Every screen
@@ -15,9 +16,31 @@ adb); the `device_run` tool asks Jev (TypeSafe System One) to pick each action
 from the real UI tree, so a natural-language task runs autonomously at ~2–3s
 per step.
 
-A sidecar plugin for [gray](https://github.com/vstaln/gray).
+## Screenshot
 
-## Tools
+A `device_status` call inside a gray session — the phone was on Settings
+with 39 clickable elements:
+
+![device_status tool call in gray](assets/screenshot.svg)
+
+## Install
+
+From the gray plugin hub:
+
+```sh
+gray plugin install hands
+```
+
+From source (needs a Rust toolchain):
+
+```sh
+cargo install --path .
+gray plugin install ~/.cargo/bin/gray-hands
+```
+
+## Usage
+
+### Tools
 
 | tool | what it does |
 |---|---|
@@ -42,24 +65,20 @@ Quote literal text to type inside the task string (e.g.
 /hands [ui|status|apps|screenshot|tap x y|swipe dir|press btn|launch pkg|type text|run task]
 ```
 
-## Requirements
+## Configuration
 
 - `mobilerun` on `PATH`, with a device reachable over adb
 - `TYPESAFE_API_KEY` (or a key line in `~/bench/.typesafe_key`) for
   `device_run` — the other tools need no key
 
-## Wire
+## How it works
+
+### Wire
 
 `plugin/manifest` · `tool/call` (11 tools) · `command/run` (`/hands`) ·
 `plugin/shutdown` — protocol 1.1. No capabilities, no hooks.
 
-## Install
-
-```sh
-gray plugin install hands
-```
-
-## Develop
+## Development
 
 ```sh
 cargo test
@@ -74,3 +93,24 @@ republish a version.
 
 Part of the [gray](https://github.com/vstaln/gray) plugin ecosystem —
 the open-source AI agent harness. <https://gray.alignment.id>
+
+<details>
+<summary>Conformance</summary>
+
+`gray plugin check` output for this build:
+
+![gray plugin check output](assets/conformance.svg)
+
+</details>
+
+## License
+
+MIT. See [LICENSE](LICENSE).
+
+## Links
+
+- Gray: <https://gray.alignment.id>
+- Gray source: <https://github.com/vstaln/gray>
+- Plugin hub: <https://gray.alignment.id/plugins/hands/>
+
+Part of the [gray](https://github.com/vstaln/gray) plugin ecosystem — the open-source AI agent harness.
