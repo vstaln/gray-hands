@@ -458,17 +458,80 @@ fn manifest() -> Value {
     })
 }
 
+const USAGE: &str = "hands — Android control via mobilerun Portal + Jev\n  \
+    hands manifest          print plugin manifest\n  \
+    hands ui|status|apps    device surface dump\n  \
+    hands screenshot        device screenshot → path\n  \
+    hands tap <x> <y>       tap coordinates\n  \
+    hands swipe <dir>       up|down|left|right\n  \
+    hands press <btn>       back|home|enter\n  \
+    hands launch <pkg>      start an app\n  \
+    hands type <text>       type at focus\n  \
+    hands run <task>        autonomous Jev loop";
+
+fn cli_dispatch(argv: &[String]) -> (&'static str, Value) {
+    let (sub, rest) = argv.split_first().map(|(s, r)| (s.as_str(), r)).unwrap_or(("ui", &[][..]));
+    let joined = rest.join(" ");
+    match sub {
+        "ui" => ("device_ui", json!({})),
+        "status" => ("device_status", json!({})),
+        "apps" => ("device_apps", json!({})),
+        "shot" | "screenshot" => ("device_screenshot", json!({})),
+        "tap" => ("device_tap", json!({"x": rest.first().and_then(|s| s.parse::<i64>().ok()), "y": rest.get(1).and_then(|s| s.parse::<i64>().ok())})),
+        "swipe" => ("device_swipe", json!({"direction": rest.first()})),
+        "press" => ("device_press", json!({"button": rest.first().map(String::as_str).unwrap_or("back")})),
+        "launch" | "start" => ("device_launch", json!({"package": joined})),
+        "type" => ("device_type", json!({"text": joined})),
+        "run" => ("device_run", json!({"task": joined})),
+        _ => ("", json!({})),
+    }
+}
+
 #[tokio::main(flavor = "multi_thread")]
 async fn main() -> anyhow::Result<()> {
-    if std::env::args().nth(1).as_deref() == Some("manifest") {
-        println!("{}", manifest());
-        return Ok(());
-    }
-    let mut lines = tokio::io::AsyncBufReadExt::lines(tokio::io::BufReader::new(tokio::io::stdin()));
+    let args: Vec<String> = std::env::args().skip(1).collect();
+    let args: Vec<String> = match args.first().map(String::as_str) {
+        Some("hands") => args[1..].to_vec(), _ => args };
     let http = reqwest::Client::builder()
         .user_agent("gray-hands/0.1")
         .timeout(std::time::Duration::from_secs(30))
         .build()?;
+    match args.first().map(String::as_str) {
+        Some("manifest") => {
+            let _ = writeln!(std::io::stdout(), "{}", manifest());
+            return Ok(());
+        }
+        Some("sidecar") => {}
+        Some("-h" | "--help" | "help") => {
+            println!("{USAGE}");
+            return Ok(());
+        }
+        Some(verb) if !matches!(verb, "ui" | "status" | "apps" | "shot" | "screenshot" | "tap" | "swipe" | "press" | "launch" | "start" | "type" | "run") => {
+            eprintln!("unknown verb {verb}\n{USAGE}");
+            std::process::exit(1);
+        }
+        Some(_) => {
+            let (tname, targs) = cli_dispatch(&args);
+            let out = handle_tool(&http, tname, &targs).await;
+            match out.get("content").and_then(Value::as_str) {
+                Some(text) => {
+                    println!("{text}");
+                    if out.get("is_error").and_then(Value::as_bool).unwrap_or(false) {
+                        std::process::exit(1);
+                    }
+                    return Ok(());
+                }
+                None => return Ok(()),
+            }
+        }
+        None => {
+            if std::io::IsTerminal::is_terminal(&std::io::stdin()) {
+                println!("{USAGE}");
+                return Ok(());
+            }
+        }
+    }
+    let mut lines = tokio::io::AsyncBufReadExt::lines(tokio::io::BufReader::new(tokio::io::stdin()));
     let mut stdout = std::io::stdout();
     while let Some(line) = lines.next_line().await? {
         if line.trim().is_empty() { continue; }
@@ -486,30 +549,22 @@ async fn main() -> anyhow::Result<()> {
             "command/run" => {
                 let argv: Vec<String> = params.get("argv").and_then(Value::as_array)
                     .map(|a| a.iter().filter_map(Value::as_str).map(String::from).collect()).unwrap_or_default();
-                let (sub, rest) = argv.split_first().map(|(s, r)| (s.as_str(), r)).unwrap_or(("ui", &[][..]));
-                let joined = rest.join(" ");
-                let (tname, targs) = match sub {
-                    "ui" => ("device_ui", json!({})),
-                    "status" => ("device_status", json!({})),
-                    "apps" => ("device_apps", json!({})),
-                    "shot" | "screenshot" => ("device_screenshot", json!({})),
-                    "tap" => ("device_tap", json!({"x": rest.first().and_then(|s| s.parse::<i64>().ok()), "y": rest.get(1).and_then(|s| s.parse::<i64>().ok())})),
-                    "swipe" => ("device_swipe", json!({"direction": rest.first()})),
-                    "press" => ("device_press", json!({"button": rest.first().map(String::as_str).unwrap_or("back")})),
-                    "launch" | "start" => ("device_launch", json!({"package": joined})),
-                    "type" => ("device_type", json!({"text": joined})),
-                    "run" => ("device_run", json!({"task": joined})),
-                    _ => ("", json!({})),
-                };
+                let (tname, targs) = cli_dispatch(&argv);
                 let out = if tname.is_empty() {
-                    json!({"content": "usage: /hands [ui|status|apps|screenshot|tap x y|swipe dir|press btn|launch pkg|type text|run task]"})
+                    json!({"content": format!("unknown verb {}\n{USAGE}", argv.first().map(String::as_str).unwrap_or(""))})
                 } else {
                     handle_tool(&http, tname, &targs).await
                 };
                 let text = out.get("content").and_then(Value::as_str).unwrap_or("").to_string();
                 Ok(json!({"text": text}))
             }
-            _ => Ok(json!({})),
+            other => {
+                let r = json!({"id": request.id, "error": {"code": -32601,
+                    "message": format!("method not found: {other}")}});
+                writeln!(stdout, "{r}")?;
+                stdout.flush()?;
+                continue;
+            }
         };
         let response = match reply {
             Ok(result) => json!({"id": request.id, "result": result}),
