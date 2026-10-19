@@ -120,7 +120,7 @@ fn installed_apps() -> Vec<(String, String)> {
 
 fn typesafe_key() -> Option<String> {
     if let Ok(k) = std::env::var("TYPESAFE_API_KEY") { if !k.is_empty() { return Some(k); } }
-    let home = std::env::var("HOME").ok()?;
+    let home = std::env::var("HOME").ok().or_else(|| std::env::var("USERPROFILE").ok())?;
     let raw = std::fs::read_to_string(format!("{home}/bench/.typesafe_key")).ok()?;
     raw.lines()
         .map(str::trim)
