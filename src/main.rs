@@ -455,6 +455,7 @@ fn manifest() -> Value {
             {"name": "device_run", "label": "Phone task", "preview": "{task|firstline}", "description": "Autonomously run a natural-language task on the phone: Jev (System One) picks each action from the real UI tree, code executes it. Fast (~2-3s/step).", "parameters": {"type": "object", "properties": {"task": strp("natural language task; quote any literal text to type"), "max_steps": {"type": "integer"}}, "required": ["task"]}, "snippet": "device_run <task>"},
         ],
         "commands": ["/hands"], "hooks": [],
+        "command_descriptions": {"/hands": "control an Android phone"},
     })
 }
 
