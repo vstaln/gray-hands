@@ -140,10 +140,10 @@ fn installed_apps() -> Vec<(String, String)> {
 // ---------- Jev (TypeSafe System One) ----------
 
 fn typesafe_key() -> Option<String> {
-    if let Ok(k) = std::env::var("TYPESAFE_API_KEY") {
-        if !k.is_empty() {
-            return Some(k);
-        }
+    if let Ok(k) = std::env::var("TYPESAFE_API_KEY")
+        && !k.is_empty()
+    {
+        return Some(k);
     }
     let home = std::env::var("HOME")
         .ok()
@@ -222,10 +222,11 @@ fn name_matches(task_lc: &str, pkg: &str, name: &str) -> bool {
     if n.len() >= 4 && task_n.contains(&format!(" {n} ")) {
         return true;
     }
-    if let Some(tail) = pkg.rsplit('.').next() {
-        if tail.len() >= 4 && task_n.contains(&format!(" {tail} ")) {
-            return true;
-        }
+    if let Some(tail) = pkg.rsplit('.').next()
+        && tail.len() >= 4
+        && task_n.contains(&format!(" {tail} "))
+    {
+        return true;
     }
     false
 }
