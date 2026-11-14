@@ -32,8 +32,12 @@ struct El {
 }
 
 impl El {
-    fn cx(&self) -> i64 { (self.x1 + self.x2) / 2 }
-    fn cy(&self) -> i64 { (self.y1 + self.y2) / 2 }
+    fn cx(&self) -> i64 {
+        (self.x1 + self.x2) / 2
+    }
+    fn cy(&self) -> i64 {
+        (self.y1 + self.y2) / 2
+    }
 }
 
 // ---------- mobilerun device shell ----------
@@ -50,7 +54,15 @@ fn mr(args: &[&str]) -> Result<String, String> {
         String::from_utf8_lossy(&out.stdout),
         String::from_utf8_lossy(&out.stderr)
     );
-    if out.status.success() { Ok(text) } else { Err(format!("mobilerun {:?}: {}", args, text.trim().chars().take(300).collect::<String>())) }
+    if out.status.success() {
+        Ok(text)
+    } else {
+        Err(format!(
+            "mobilerun {:?}: {}",
+            args,
+            text.trim().chars().take(300).collect::<String>()
+        ))
+    }
 }
 
 fn parse_ui(text: &str) -> (String, Vec<El>) {
@@ -59,11 +71,16 @@ fn parse_ui(text: &str) -> (String, Vec<El>) {
         .captures(text)
         .map(|c| c[1].trim().to_string())
         .unwrap_or_else(|| "?".into());
-    let el_re = Regex::new(r"(?m)^\s*(\d+)\.\s+([A-Za-z]+):\s+(.*?)\s*-\s*\((\d+),(\d+),(\d+),(\d+)\)\s*$").unwrap();
+    let el_re =
+        Regex::new(r"(?m)^\s*(\d+)\.\s+([A-Za-z]+):\s+(.*?)\s*-\s*\((\d+),(\d+),(\d+),(\d+)\)\s*$")
+            .unwrap();
     let q_re = Regex::new(r#""([^"]+)""#).unwrap();
     let mut elements = vec![];
     for c in el_re.captures_iter(text) {
-        let labels: Vec<String> = q_re.captures_iter(&c[3]).map(|q| q[1].to_string()).collect();
+        let labels: Vec<String> = q_re
+            .captures_iter(&c[3])
+            .map(|q| q[1].to_string())
+            .collect();
         let label = labels
             .iter()
             .find(|l| !l.contains(":id/"))
@@ -85,7 +102,9 @@ fn parse_ui(text: &str) -> (String, Vec<El>) {
 
 fn ui_hash(elements: &[El]) -> u64 {
     let mut h = DefaultHasher::new();
-    for e in elements { e.label.hash(&mut h); }
+    for e in elements {
+        e.label.hash(&mut h);
+    }
     h.finish()
 }
 
@@ -109,7 +128,9 @@ fn ui_dump() -> Result<(String, Vec<El>), String> {
 
 /// Installed apps as (package, display name) pairs.
 fn installed_apps() -> Vec<(String, String)> {
-    let Ok(text) = mr(&["apps"]) else { return vec![] };
+    let Ok(text) = mr(&["apps"]) else {
+        return vec![];
+    };
     let re = Regex::new(r"(?m)^(\S+)\s+\((.+)\)\s*$").unwrap();
     re.captures_iter(&text)
         .map(|c| (c[1].to_string(), c[2].to_string()))
@@ -119,7 +140,11 @@ fn installed_apps() -> Vec<(String, String)> {
 // ---------- Jev (TypeSafe System One) ----------
 
 fn typesafe_key() -> Option<String> {
-    if let Ok(k) = std::env::var("TYPESAFE_API_KEY") { if !k.is_empty() { return Some(k); } }
+    if let Ok(k) = std::env::var("TYPESAFE_API_KEY")
+        && !k.is_empty()
+    {
+        return Some(k);
+    }
     let home = std::env::var("HOME")
         .ok()
         .filter(|v| !v.is_empty())
@@ -149,15 +174,24 @@ async fn jev(http: &reqwest::Client, state: &Value, questions: &Value) -> Result
             Ok(r) => {
                 let st = r.status().as_u16();
                 if [429, 500, 502, 503, 504, 529].contains(&st) && attempt < 5 {
-                    tokio::time::sleep(std::time::Duration::from_secs_f64((0.5 * 2f64.powi(attempt as i32)).min(15.0))).await;
+                    tokio::time::sleep(std::time::Duration::from_secs_f64(
+                        (0.5 * 2f64.powi(attempt as i32)).min(15.0),
+                    ))
+                    .await;
                     continue;
                 }
                 let t = r.text().await.unwrap_or_default();
-                return Err(format!("jev HTTP {st}: {}", t.chars().take(200).collect::<String>()));
+                return Err(format!(
+                    "jev HTTP {st}: {}",
+                    t.chars().take(200).collect::<String>()
+                ));
             }
             Err(e) => {
                 if attempt < 5 {
-                    tokio::time::sleep(std::time::Duration::from_secs_f64((0.5 * 2f64.powi(attempt as i32)).min(15.0))).await;
+                    tokio::time::sleep(std::time::Duration::from_secs_f64(
+                        (0.5 * 2f64.powi(attempt as i32)).min(15.0),
+                    ))
+                    .await;
                     continue;
                 }
                 return Err(format!("jev fetch: {e}"));
@@ -171,19 +205,37 @@ async fn jev(http: &reqwest::Client, state: &Value, questions: &Value) -> Result
 
 /// True when the task text names this installed app (display name or package tail).
 fn name_matches(task_lc: &str, pkg: &str, name: &str) -> bool {
-    let norm = |s: &str| s.chars().map(|c| if c.is_alphanumeric() { c.to_ascii_lowercase() } else { ' ' }).collect::<String>();
+    let norm = |s: &str| {
+        s.chars()
+            .map(|c| {
+                if c.is_alphanumeric() {
+                    c.to_ascii_lowercase()
+                } else {
+                    ' '
+                }
+            })
+            .collect::<String>()
+    };
     let task_n = format!(" {} ", norm(task_lc));
     let n = norm(name);
     let n = n.trim();
-    if n.len() >= 4 && task_n.contains(&format!(" {n} ")) { return true; }
-    if let Some(tail) = pkg.rsplit('.').next() {
-        if tail.len() >= 4 && task_n.contains(&format!(" {tail} ")) { return true; }
+    if n.len() >= 4 && task_n.contains(&format!(" {n} ")) {
+        return true;
+    }
+    if let Some(tail) = pkg.rsplit('.').next()
+        && tail.len() >= 4
+        && task_n.contains(&format!(" {tail} "))
+    {
+        return true;
     }
     false
 }
 
 fn task_words(task: &str) -> Vec<String> {
-    task.split(|c: char| !c.is_alphanumeric()).filter(|w| w.len() > 3).map(String::from).collect()
+    task.split(|c: char| !c.is_alphanumeric())
+        .filter(|w| w.len() > 3)
+        .map(String::from)
+        .collect()
 }
 
 /// Second Jev call: choose the text to type from candidates derived from the task
@@ -192,36 +244,61 @@ async fn pick_text(http: &reqwest::Client, task: &str) -> Option<String> {
     let mut cand: Vec<String> = vec![];
     let mut seen = std::collections::HashSet::new();
     let mut push = |s: String| {
-        if s.len() >= 3 && seen.insert(s.to_lowercase()) { cand.push(s); }
+        if s.len() >= 3 && seen.insert(s.to_lowercase()) {
+            cand.push(s);
+        }
     };
     let words = task_words(task);
-    for w in words.windows(2).rev() { push(w.join(" ")); }
-    for w in words.iter().rev() { push(w.clone()); }
+    for w in words.windows(2).rev() {
+        push(w.join(" "));
+    }
+    for w in words.iter().rev() {
+        push(w.clone());
+    }
     cand.truncate(8);
-    if cand.is_empty() { return None; }
+    if cand.is_empty() {
+        return None;
+    }
     let mut criteria = serde_json::Map::new();
-    criteria.insert("abort".into(), json!("none of these is the right text to type"));
-    for (i, c) in cand.iter().enumerate() { criteria.insert(format!("s{i}"), json!(c)); }
+    criteria.insert(
+        "abort".into(),
+        json!("none of these is the right text to type"),
+    );
+    for (i, c) in cand.iter().enumerate() {
+        criteria.insert(format!("s{i}"), json!(c));
+    }
     let q = json!({"text": {"type": "choice",
         "instructions": {"question": "The agent needs to type into a focused field (e.g. a search box) to accomplish the task. Which candidate string should be typed?"},
         "criteria": criteria}});
     let ans = jev(http, &json!({"task": task}), &q).await.ok()?;
-    let i = ans["text"]["choice"].as_str()?.strip_prefix('s')?.parse::<usize>().ok()?;
+    let i = ans["text"]["choice"]
+        .as_str()?
+        .strip_prefix('s')?
+        .parse::<usize>()
+        .ok()?;
     cand.get(i).cloned()
 }
 
 /// Second Jev call: which installed app to launch for this task.
 async fn pick_app(http: &reqwest::Client, task: &str, apps: &[(String, String)]) -> Option<String> {
-    if apps.is_empty() { return None; }
+    if apps.is_empty() {
+        return None;
+    }
     let mut criteria = serde_json::Map::new();
     criteria.insert("none".into(), json!("no installed app helps"));
-    for (p, n) in apps.iter().take(60) { criteria.insert(p.clone(), json!(format!("{n} ({p})"))); }
+    for (p, n) in apps.iter().take(60) {
+        criteria.insert(p.clone(), json!(format!("{n} ({p})")));
+    }
     let q = json!({"app": {"type": "choice",
         "instructions": {"question": "Which installed app should be opened to accomplish this task?"},
         "criteria": criteria}});
     let ans = jev(http, &json!({"task": task}), &q).await.ok()?;
     let c = ans["app"]["choice"].as_str()?;
-    if c.is_empty() || c == "none" { None } else { Some(c.to_string()) }
+    if c.is_empty() || c == "none" {
+        None
+    } else {
+        Some(c.to_string())
+    }
 }
 
 async fn device_run(http: &reqwest::Client, task: &str, max_steps: usize) -> Value {
@@ -263,22 +340,40 @@ async fn device_run(http: &reqwest::Client, task: &str, max_steps: usize) -> Val
         let t0 = std::time::Instant::now();
         let (app, mut elements) = match ui_dump() {
             Ok(v) => v,
-            Err(e) => { transcript.push(format!("step {step}: ui dump failed: {e}")); break; }
+            Err(e) => {
+                transcript.push(format!("step {step}: ui dump failed: {e}"));
+                break;
+            }
         };
-        elements.dedup_by(|a, b| a.label == b.label && a.x1 == b.x1 && a.y1 == b.y1 && a.x2 == b.x2 && a.y2 == b.y2);
-        if elements.is_empty() { transcript.push(format!("step {step}: empty UI tree")); break; }
+        elements.dedup_by(|a, b| {
+            a.label == b.label && a.x1 == b.x1 && a.y1 == b.y1 && a.x2 == b.x2 && a.y2 == b.y2
+        });
+        if elements.is_empty() {
+            transcript.push(format!("step {step}: empty UI tree"));
+            break;
+        }
         let hash = ui_hash(&elements);
         same_count = if hash == last_hash { same_count + 1 } else { 0 };
         last_hash = hash;
         if same_count >= 2 {
-            transcript.push(format!("step {step}: screen unchanged {}x — stopping", same_count + 1));
+            transcript.push(format!(
+                "step {step}: screen unchanged {}x — stopping",
+                same_count + 1
+            ));
             break;
         }
 
         let mut target = serde_json::Map::new();
         target.insert("none".into(), json!("no listed element helps"));
         for e in elements.iter().take(40) {
-            target.insert(format!("el{}", e.i), json!(format!("{} \"{}\"", e.cls, e.label.chars().take(60).collect::<String>())));
+            target.insert(
+                format!("el{}", e.i),
+                json!(format!(
+                    "{} \"{}\"",
+                    e.cls,
+                    e.label.chars().take(60).collect::<String>()
+                )),
+            );
         }
         let state = json!({
             "task": task,
@@ -292,43 +387,89 @@ async fn device_run(http: &reqwest::Client, task: &str, max_steps: usize) -> Val
         });
         let answers = match jev(http, &state, &questions).await {
             Ok(a) => a,
-            Err(e) => { transcript.push(format!("step {step}: jev failed: {e}")); break; }
+            Err(e) => {
+                transcript.push(format!("step {step}: jev failed: {e}"));
+                break;
+            }
         };
-        let action = answers["action"]["choice"].as_str().unwrap_or("stuck").to_string();
+        let action = answers["action"]["choice"]
+            .as_str()
+            .unwrap_or("stuck")
+            .to_string();
         let conf = answers["action"]["confidence"].as_f64();
-        let ti = answers["target"]["choice"].as_str().unwrap_or("").strip_prefix("el").and_then(|s| s.parse::<i64>().ok());
+        let ti = answers["target"]["choice"]
+            .as_str()
+            .unwrap_or("")
+            .strip_prefix("el")
+            .and_then(|s| s.parse::<i64>().ok());
         let el = ti.and_then(|i| elements.iter().find(|e| e.i == i));
         transcript.push(format!(
             "step {step}: app={app} action={action}{}{} ({:.0}ms)",
-            el.map(|e| format!(" -> [{}] \"{}\" ({},{})", e.i, e.label, e.cx(), e.cy())).unwrap_or_default(),
+            el.map(|e| format!(" -> [{}] \"{}\" ({},{})", e.i, e.label, e.cx(), e.cy()))
+                .unwrap_or_default(),
             conf.map(|c| format!(" conf={c:.2}")).unwrap_or_default(),
             t0.elapsed().as_millis()
         ));
 
-        if action == "done" || action == "stuck" { break; }
-        history.push(format!("{action}{}", el.map(|e| format!(" \"{}\"", e.label)).unwrap_or_default()));
+        if action == "done" || action == "stuck" {
+            break;
+        }
+        history.push(format!(
+            "{action}{}",
+            el.map(|e| format!(" \"{}\"", e.label)).unwrap_or_default()
+        ));
         let r = match (action.as_str(), el) {
             ("tap", Some(e)) => mr(&["tap", &e.cx().to_string(), &e.cy().to_string()]),
             ("type", _) => {
-                let text = match &type_text { Some(t) => Some(t.clone()), None => pick_text(http, task).await };
+                let text = match &type_text {
+                    Some(t) => Some(t.clone()),
+                    None => pick_text(http, task).await,
+                };
                 match (text, el) {
-                    (Some(t), Some(e)) => mr(&["tap", &e.cx().to_string(), &e.cy().to_string()]).and_then(|_| mr(&["type", &t])),
+                    (Some(t), Some(e)) => mr(&["tap", &e.cx().to_string(), &e.cy().to_string()])
+                        .and_then(|_| mr(&["type", &t])),
                     (Some(t), None) => mr(&["type", &t]),
                     (None, _) => Err("type chosen but no text could be determined".into()),
                 }
             }
-            ("swipe_up", _) => mr(&["swipe", &(w / 2).to_string(), &(h * 4 / 5).to_string(), &(w / 2).to_string(), &(h / 3).to_string()]),
-            ("swipe_down", _) => mr(&["swipe", &(w / 2).to_string(), &(h / 3).to_string(), &(w / 2).to_string(), &(h * 4 / 5).to_string()]),
+            ("swipe_up", _) => mr(&[
+                "swipe",
+                &(w / 2).to_string(),
+                &(h * 4 / 5).to_string(),
+                &(w / 2).to_string(),
+                &(h / 3).to_string(),
+            ]),
+            ("swipe_down", _) => mr(&[
+                "swipe",
+                &(w / 2).to_string(),
+                &(h / 3).to_string(),
+                &(w / 2).to_string(),
+                &(h * 4 / 5).to_string(),
+            ]),
             ("back" | "home" | "enter", _) => mr(&["press", &action]),
             ("launch", _) => {
-                let pkg = apps.iter().find(|(p, n)| name_matches(&task_lc, p, n)).map(|(p, _)| p.clone());
-                let pkg = match pkg { Some(p) => Some(p), None => pick_app(http, task, &apps).await };
-                match pkg { Some(p) => mr(&["start", &p]), None => Err("launch chosen but no app selected".into()) }
+                let pkg = apps
+                    .iter()
+                    .find(|(p, n)| name_matches(&task_lc, p, n))
+                    .map(|(p, _)| p.clone());
+                let pkg = match pkg {
+                    Some(p) => Some(p),
+                    None => pick_app(http, task, &apps).await,
+                };
+                match pkg {
+                    Some(p) => mr(&["start", &p]),
+                    None => Err("launch chosen but no app selected".into()),
+                }
             }
             ("wait", _) => Ok(String::new()),
-            _ => { transcript.push(format!("   no-op: {action}")); continue; }
+            _ => {
+                transcript.push(format!("   no-op: {action}"));
+                continue;
+            }
         };
-        if let Err(e) = r { transcript.push(format!("   exec failed: {e}")); }
+        if let Err(e) = r {
+            transcript.push(format!("   exec failed: {e}"));
+        }
         tokio::time::sleep(std::time::Duration::from_millis(700)).await;
     }
     json!({
@@ -341,9 +482,15 @@ async fn device_run(http: &reqwest::Client, task: &str, max_steps: usize) -> Val
 
 // ---------- tool handlers ----------
 
-fn str_arg<'a>(args: &'a Value, k: &str) -> Option<&'a str> { args.get(k).and_then(Value::as_str) }
-fn ok(content: String) -> Value { json!({"content": content.chars().take(8000).collect::<String>()}) }
-fn err(e: impl std::fmt::Display) -> Value { json!({"content": format!("error: {e}"), "is_error": true}) }
+fn str_arg<'a>(args: &'a Value, k: &str) -> Option<&'a str> {
+    args.get(k).and_then(Value::as_str)
+}
+fn ok(content: String) -> Value {
+    json!({"content": content.chars().take(8000).collect::<String>()})
+}
+fn err(e: impl std::fmt::Display) -> Value {
+    json!({"content": format!("error: {e}"), "is_error": true})
+}
 
 fn device_gate() -> Result<(), String> {
     let out = std::process::Command::new("adb")
@@ -354,7 +501,11 @@ fn device_gate() -> Result<(), String> {
         .lines()
         .skip(1)
         .any(|l| !l.trim().is_empty());
-    if listed { Ok(()) } else { Err("no device connected (adb devices is empty)".into()) }
+    if listed {
+        Ok(())
+    } else {
+        Err("no device connected (adb devices is empty)".into())
+    }
 }
 
 async fn handle_tool(http: &reqwest::Client, name: &str, args: &Value) -> Value {
@@ -365,7 +516,13 @@ async fn handle_tool(http: &reqwest::Client, name: &str, args: &Value) -> Value 
     }
     match name {
         "device_ui" => match ui_dump() {
-            Ok((app, els)) => ok(format!("app: {app}\n{}", els.iter().map(|e| format!("{}. {} \"{}\" ({},{})", e.i, e.cls, e.label, e.cx(), e.cy())).collect::<Vec<_>>().join("\n"))),
+            Ok((app, els)) => ok(format!(
+                "app: {app}\n{}",
+                els.iter()
+                    .map(|e| format!("{}. {} \"{}\" ({},{})", e.i, e.cls, e.label, e.cx(), e.cy()))
+                    .collect::<Vec<_>>()
+                    .join("\n")
+            )),
             Err(e) => err(e),
         },
         "device_status" => match ui_dump() {
@@ -373,9 +530,17 @@ async fn handle_tool(http: &reqwest::Client, name: &str, args: &Value) -> Value 
             Err(e) => err(e),
         },
         "device_tap" => {
-            let (x, y) = (args["x"].as_i64().unwrap_or(-1), args["y"].as_i64().unwrap_or(-1));
-            if x < 0 || y < 0 { return err("x and y required"); }
-            match mr(&["tap", &x.to_string(), &y.to_string()]) { Ok(t) => ok(t.trim().to_string()), Err(e) => err(e) }
+            let (x, y) = (
+                args["x"].as_i64().unwrap_or(-1),
+                args["y"].as_i64().unwrap_or(-1),
+            );
+            if x < 0 || y < 0 {
+                return err("x and y required");
+            }
+            match mr(&["tap", &x.to_string(), &y.to_string()]) {
+                Ok(t) => ok(t.trim().to_string()),
+                Err(e) => err(e),
+            }
         }
         "device_tap_element" => {
             let i = args["index"].as_i64().unwrap_or(-1);
@@ -392,17 +557,25 @@ async fn handle_tool(http: &reqwest::Client, name: &str, args: &Value) -> Value 
         }
         "device_type" => {
             let text = str_arg(args, "text").unwrap_or("");
-            if text.is_empty() { return err("text required"); }
+            if text.is_empty() {
+                return err("text required");
+            }
             let focus = args["element_index"].as_i64();
             let r = (|| {
                 if let Some(i) = focus {
                     let (_, els) = ui_dump()?;
-                    let e = els.iter().find(|e| e.i == i).ok_or_else(|| format!("no element index {i}"))?;
+                    let e = els
+                        .iter()
+                        .find(|e| e.i == i)
+                        .ok_or_else(|| format!("no element index {i}"))?;
                     mr(&["tap", &e.cx().to_string(), &e.cy().to_string()])?;
                 }
                 mr(&["type", text])
             })();
-            match r { Ok(t) => ok(t.trim().to_string()), Err(e) => err(e) }
+            match r {
+                Ok(t) => ok(t.trim().to_string()),
+                Err(e) => err(e),
+            }
         }
         "device_swipe" => {
             let dir = str_arg(args, "direction").unwrap_or("up");
@@ -413,25 +586,50 @@ async fn handle_tool(http: &reqwest::Client, name: &str, args: &Value) -> Value 
                 "right" => (w / 5, h / 2, w * 4 / 5, h / 2),
                 _ => (w / 2, h * 4 / 5, w / 2, h / 3),
             };
-            match mr(&["swipe", &x1.to_string(), &y1.to_string(), &x2.to_string(), &y2.to_string()]) {
-                Ok(t) => ok(t.trim().to_string()), Err(e) => err(e),
+            match mr(&[
+                "swipe",
+                &x1.to_string(),
+                &y1.to_string(),
+                &x2.to_string(),
+                &y2.to_string(),
+            ]) {
+                Ok(t) => ok(t.trim().to_string()),
+                Err(e) => err(e),
             }
         }
         "device_press" => {
             let b = str_arg(args, "button").unwrap_or("back");
-            if !["back", "home", "enter"].contains(&b) { return err("button must be back|home|enter"); }
-            match mr(&["press", b]) { Ok(t) => ok(t.trim().to_string()), Err(e) => err(e) }
+            if !["back", "home", "enter"].contains(&b) {
+                return err("button must be back|home|enter");
+            }
+            match mr(&["press", b]) {
+                Ok(t) => ok(t.trim().to_string()),
+                Err(e) => err(e),
+            }
         }
         "device_launch" => {
             let pkg = str_arg(args, "package").unwrap_or("");
-            if pkg.is_empty() { return err("package required"); }
-            match mr(&["start", pkg]) { Ok(t) => ok(t.trim().to_string()), Err(e) => err(e) }
+            if pkg.is_empty() {
+                return err("package required");
+            }
+            match mr(&["start", pkg]) {
+                Ok(t) => ok(t.trim().to_string()),
+                Err(e) => err(e),
+            }
         }
-        "device_apps" => match mr(&["apps"]) { Ok(t) => ok(t.trim().chars().take(6000).collect()), Err(e) => err(e) },
-        "device_screenshot" => match mr(&["screenshot"]) { Ok(t) => ok(t.trim().to_string()), Err(e) => err(e) },
+        "device_apps" => match mr(&["apps"]) {
+            Ok(t) => ok(t.trim().chars().take(6000).collect()),
+            Err(e) => err(e),
+        },
+        "device_screenshot" => match mr(&["screenshot"]) {
+            Ok(t) => ok(t.trim().to_string()),
+            Err(e) => err(e),
+        },
         "device_run" => {
             let task = str_arg(args, "task").unwrap_or("");
-            if task.is_empty() { return err("task required"); }
+            if task.is_empty() {
+                return err("task required");
+            }
             let max = args["max_steps"].as_u64().unwrap_or(15).min(30) as usize;
             let r = device_run(http, task, max).await;
             ok(serde_json::to_string_pretty(&r).unwrap_or_default())
@@ -457,6 +655,7 @@ fn manifest() -> Value {
             {"name": "device_screenshot", "label": "Phone screenshot", "description": "Take a screenshot; returns the saved file path", "parameters": {"type": "object", "properties": {}}, "snippet": "device_screenshot"},
             {"name": "device_run", "label": "Phone task", "preview": "{task|firstline}", "description": "Autonomously run a natural-language task on the phone: Jev (System One) picks each action from the real UI tree, code executes it. Fast (~2-3s/step).", "parameters": {"type": "object", "properties": {"task": strp("natural language task; quote any literal text to type"), "max_steps": {"type": "integer"}}, "required": ["task"]}, "snippet": "device_run <task>"},
         ],
+        "description": "control an Android phone",
         "commands": ["/hands"], "hooks": [],
         "command_descriptions": {"/hands": "control an Android phone"},
     })
@@ -474,16 +673,25 @@ const USAGE: &str = "hands — Android control via mobilerun Portal + Jev\n  \
     hands run <task>        autonomous Jev loop";
 
 fn cli_dispatch(argv: &[String]) -> (&'static str, Value) {
-    let (sub, rest) = argv.split_first().map(|(s, r)| (s.as_str(), r)).unwrap_or(("ui", &[][..]));
+    let (sub, rest) = argv
+        .split_first()
+        .map(|(s, r)| (s.as_str(), r))
+        .unwrap_or(("ui", &[][..]));
     let joined = rest.join(" ");
     match sub {
         "ui" => ("device_ui", json!({})),
         "status" => ("device_status", json!({})),
         "apps" => ("device_apps", json!({})),
         "shot" | "screenshot" => ("device_screenshot", json!({})),
-        "tap" => ("device_tap", json!({"x": rest.first().and_then(|s| s.parse::<i64>().ok()), "y": rest.get(1).and_then(|s| s.parse::<i64>().ok())})),
+        "tap" => (
+            "device_tap",
+            json!({"x": rest.first().and_then(|s| s.parse::<i64>().ok()), "y": rest.get(1).and_then(|s| s.parse::<i64>().ok())}),
+        ),
         "swipe" => ("device_swipe", json!({"direction": rest.first()})),
-        "press" => ("device_press", json!({"button": rest.first().map(String::as_str).unwrap_or("back")})),
+        "press" => (
+            "device_press",
+            json!({"button": rest.first().map(String::as_str).unwrap_or("back")}),
+        ),
         "launch" | "start" => ("device_launch", json!({"package": joined})),
         "type" => ("device_type", json!({"text": joined})),
         "run" => ("device_run", json!({"task": joined})),
@@ -495,7 +703,9 @@ fn cli_dispatch(argv: &[String]) -> (&'static str, Value) {
 async fn main() -> anyhow::Result<()> {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let args: Vec<String> = match args.first().map(String::as_str) {
-        Some("hands") => args[1..].to_vec(), _ => args };
+        Some("hands") => args[1..].to_vec(),
+        _ => args,
+    };
     let http = reqwest::Client::builder()
         .user_agent("gray-hands/0.1")
         .timeout(std::time::Duration::from_secs(30))
@@ -510,7 +720,22 @@ async fn main() -> anyhow::Result<()> {
             println!("{USAGE}");
             return Ok(());
         }
-        Some(verb) if !matches!(verb, "ui" | "status" | "apps" | "shot" | "screenshot" | "tap" | "swipe" | "press" | "launch" | "start" | "type" | "run") => {
+        Some(verb)
+            if !matches!(
+                verb,
+                "ui" | "status"
+                    | "apps"
+                    | "shot"
+                    | "screenshot"
+                    | "tap"
+                    | "swipe"
+                    | "press"
+                    | "launch"
+                    | "start"
+                    | "type"
+                    | "run"
+            ) =>
+        {
             eprintln!("unknown verb {verb}\n{USAGE}");
             std::process::exit(1);
         }
@@ -520,7 +745,11 @@ async fn main() -> anyhow::Result<()> {
             match out.get("content").and_then(Value::as_str) {
                 Some(text) => {
                     println!("{text}");
-                    if out.get("is_error").and_then(Value::as_bool).unwrap_or(false) {
+                    if out
+                        .get("is_error")
+                        .and_then(Value::as_bool)
+                        .unwrap_or(false)
+                    {
                         std::process::exit(1);
                     }
                     return Ok(());
@@ -535,13 +764,23 @@ async fn main() -> anyhow::Result<()> {
             }
         }
     }
-    let mut lines = tokio::io::AsyncBufReadExt::lines(tokio::io::BufReader::new(tokio::io::stdin()));
+    let mut lines =
+        tokio::io::AsyncBufReadExt::lines(tokio::io::BufReader::new(tokio::io::stdin()));
     let mut stdout = std::io::stdout();
     while let Some(line) = lines.next_line().await? {
-        if line.trim().is_empty() { continue; }
-        let request: Request = match serde_json::from_str(&line) { Ok(r) => r, Err(_) => continue };
-        if request.method == "plugin/shutdown" { break; }
-        if request.id.is_null() { continue; }
+        if line.trim().is_empty() {
+            continue;
+        }
+        let request: Request = match serde_json::from_str(&line) {
+            Ok(r) => r,
+            Err(_) => continue,
+        };
+        if request.method == "plugin/shutdown" {
+            break;
+        }
+        if request.id.is_null() {
+            continue;
+        }
         let params = request.params.clone().unwrap_or_else(|| json!({}));
         let reply: anyhow::Result<Value> = match request.method.as_str() {
             "plugin/manifest" => Ok(manifest()),
@@ -551,15 +790,27 @@ async fn main() -> anyhow::Result<()> {
                 Ok(handle_tool(&http, name, &args).await)
             }
             "command/run" => {
-                let argv: Vec<String> = params.get("argv").and_then(Value::as_array)
-                    .map(|a| a.iter().filter_map(Value::as_str).map(String::from).collect()).unwrap_or_default();
+                let argv: Vec<String> = params
+                    .get("argv")
+                    .and_then(Value::as_array)
+                    .map(|a| {
+                        a.iter()
+                            .filter_map(Value::as_str)
+                            .map(String::from)
+                            .collect()
+                    })
+                    .unwrap_or_default();
                 let (tname, targs) = cli_dispatch(&argv);
                 let out = if tname.is_empty() {
                     json!({"content": format!("unknown verb {}\n{USAGE}", argv.first().map(String::as_str).unwrap_or(""))})
                 } else {
                     handle_tool(&http, tname, &targs).await
                 };
-                let text = out.get("content").and_then(Value::as_str).unwrap_or("").to_string();
+                let text = out
+                    .get("content")
+                    .and_then(Value::as_str)
+                    .unwrap_or("")
+                    .to_string();
                 Ok(json!({"text": text}))
             }
             other => {
@@ -591,16 +842,42 @@ mod tests {
         assert!(app.contains("Settings"), "app was {app}");
         assert!(els.len() > 10, "only {} elements", els.len());
         assert!(els.iter().all(|e| e.x2 >= e.x1 && e.y2 >= e.y1));
-        assert!(els.iter().any(|e| e.label == "Airplane mode"), "labels: {:?}", els.iter().map(|e| &e.label).collect::<Vec<_>>());
-        assert_eq!(els.iter().find(|e| e.label == "Airplane mode").unwrap().cx(), 532);
+        assert!(
+            els.iter().any(|e| e.label == "Airplane mode"),
+            "labels: {:?}",
+            els.iter().map(|e| &e.label).collect::<Vec<_>>()
+        );
+        assert_eq!(
+            els.iter()
+                .find(|e| e.label == "Airplane mode")
+                .unwrap()
+                .cx(),
+            532
+        );
     }
 
     #[test]
     fn matches_task_apps() {
-        assert!(name_matches("open the settings app", "com.android.settings", "Settings"));
-        assert!(name_matches("put on spotify", "com.spotify.music", "Spotify"));
-        assert!(name_matches("show me music", "com.spotify.music", "Spotify")); // pkg tail
-        assert!(!name_matches("check the weather", "com.spotify.music", "Spotify"));
+        assert!(name_matches(
+            "open the settings app",
+            "com.android.settings",
+            "Settings"
+        ));
+        assert!(name_matches(
+            "put on spotify",
+            "com.spotify.music",
+            "Spotify"
+        ));
+        assert!(name_matches(
+            "show me music",
+            "com.spotify.music",
+            "Spotify"
+        )); // pkg tail
+        assert!(!name_matches(
+            "check the weather",
+            "com.spotify.music",
+            "Spotify"
+        ));
         assert!(!name_matches("open app", "com.oppo.camera", "Camera"));
     }
 }
